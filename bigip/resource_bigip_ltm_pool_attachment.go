@@ -101,12 +101,25 @@ func resourceBigipLtmPoolAttachment() *schema.Resource {
 	}
 }
 
+func SplitNodePort(s string, sep1 string, sep2 string) []string {
+	m := strings.Index(s, sep1)
+	n := strings.Index(s, sep2)
+	if m > n {
+		return strings.Split(s, sep1)
+	} else if m < n {
+		return strings.Split(s, sep2)
+	} else {
+		return nil
+	}
+}
+
 func resourceBigipLtmPoolAttachmentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*bigip.BigIP)
 	poolName := d.Get("pool").(string)
 	nodeName := d.Get("node").(string)
 	poolPartition := strings.Split(poolName, "/")[1]
-	parts := strings.Split(nodeName, ":")
+	//	parts := strings.Split(nodeName, ":")
+	parts := SplitNodePort(nodeName, ":", ".")
 	log.Printf("[INFO][CREATE] Attaching Node :%+v to pool : %+v", nodeName, poolName)
 	re := regexp.MustCompile(`/([a-zA-z0-9?_-]+)/([a-zA-z0-9.?_-]+):(\d+)`)
 	match := re.FindStringSubmatch(nodeName)
@@ -179,7 +192,8 @@ func resourceBigipLtmPoolAttachmentUpdate(ctx context.Context, d *schema.Resourc
 	re := regexp.MustCompile(`/([a-zA-z0-9?_-]+)/([a-zA-z0-9.?_-]+):(\d+)`)
 	match := re.FindStringSubmatch(nodeName)
 	if match != nil {
-		parts := strings.Split(nodeName, ":")
+		// parts := strings.Split(nodeName, ":")
+		parts := SplitNodePort(nodeName, ":", ".")
 		node1, err := client.GetNode(parts[0])
 		if err != nil {
 			return diag.FromErr(err)
@@ -190,7 +204,8 @@ func resourceBigipLtmPoolAttachmentUpdate(ctx context.Context, d *schema.Resourc
 			return nil
 		}
 
-		poolMem := strings.Split(nodeName, ":")[0]
+		// poolMem := strings.Split(nodeName, ":")[0]
+		poolMem := SplitNodePort(nodeName, ":", ".")[0]
 		nodeName1 := strings.Split(poolMem, "/")[2]
 		poolName := d.Get("pool").(string)
 		config := &bigip.PoolMember{
@@ -237,7 +252,8 @@ func resourceBigipLtmPoolAttachmentUpdate(ctx context.Context, d *schema.Resourc
 		poolName := d.Id()
 		poolPartition := strings.Split(poolName, "/")[1]
 		nodeName := d.Get("node").(string)
-		parts := strings.Split(nodeName, ":")
+		// parts := strings.Split(nodeName, ":")
+		parts := SplitNodePort(nodeName, ":", ".")
 		ipNode := strings.Split(parts[0], "%")[0]
 		poolMem := fmt.Sprintf("/%s/%s", poolPartition, nodeName)
 		config := &bigip.PoolMember{
